@@ -28,9 +28,9 @@ const Sidebar = ({ activeTab, onTabChange, onLogout, isOpen, onClose }) => {
 
       {/* Sidebar */}
       <div className={`
-        fixed top-0 left-0 h-full z-50 transition-transform duration-300 ease-in-out
+        fixed top-0 left-0 h-screen z-50 transition-transform duration-300 ease-in-out
         ${isOpen ? 'translate-x-0' : '-translate-x-full'}
-        lg:translate-x-0 lg:static
+        lg:translate-x-0
         w-64 bg-gradient-to-b from-slate-800 to-slate-900 text-white shadow-xl
       `}>
         {/* Mobile close button */}
