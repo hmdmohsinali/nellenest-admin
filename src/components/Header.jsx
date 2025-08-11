@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 import { 
   BellIcon, 
   MagnifyingGlassIcon, 
@@ -7,6 +8,7 @@ import {
 } from '@heroicons/react/24/outline';
 
 const Header = ({ onSidebarToggle }) => {
+  const { user, logout } = useAuth();
   const [notifications] = useState([
     { id: 1, message: 'New user registration', time: '2 minutes ago', unread: true },
     { id: 2, message: 'System update completed', time: '1 hour ago', unread: true },
@@ -14,6 +16,10 @@ const Header = ({ onSidebarToggle }) => {
   ]);
 
   const unreadCount = notifications.filter(n => n.unread).length;
+
+  const handleLogout = () => {
+    logout();
+  };
 
   return (
     <header className="bg-white border-b border-slate-200 px-6 py-4 fixed top-0 right-0 left-64 z-10">
@@ -40,7 +46,7 @@ const Header = ({ onSidebarToggle }) => {
         {/* Right side - Notifications and User Profile */}
         <div className="flex items-center space-x-4">
           {/* Notifications */}
-          <div className="relative">
+          <div className="relative group">
             <button className="p-2 rounded-lg hover:bg-slate-100 transition-colors duration-200 relative">
               <BellIcon className="w-6 h-6 text-slate-600" />
               {unreadCount > 0 && (
@@ -51,7 +57,7 @@ const Header = ({ onSidebarToggle }) => {
             </button>
             
             {/* Notifications Dropdown */}
-            <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-slate-200 py-2 z-20 hidden group-hover:block">
+            <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-slate-200 py-2 z-20 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
               <div className="px-4 py-2 border-b border-slate-200">
                 <h3 className="font-medium text-slate-800">Notifications</h3>
               </div>
@@ -86,11 +92,37 @@ const Header = ({ onSidebarToggle }) => {
           {/* User Profile */}
           <div className="flex items-center space-x-3">
             <div className="text-right hidden sm:block">
-              <p className="text-sm font-medium text-slate-800">John Doe</p>
-              <p className="text-xs text-slate-500">Administrator</p>
+              <p className="text-sm font-medium text-slate-800">{user?.name || 'User'}</p>
+              <p className="text-xs text-slate-500">{user?.role || 'User'}</p>
             </div>
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center">
-              <UserCircleIcon className="w-6 h-6 text-white" />
+            <div className="relative group">
+              <button className="w-8 h-8 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center hover:ring-2 hover:ring-blue-300 transition-all duration-200">
+                <UserCircleIcon className="w-6 h-6 text-white" />
+              </button>
+              
+              {/* User Dropdown */}
+              <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-slate-200 py-2 z-20 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+                <div className="px-4 py-2 border-b border-slate-200">
+                  <p className="text-sm font-medium text-slate-800">{user?.name}</p>
+                  <p className="text-xs text-slate-500">{user?.email}</p>
+                </div>
+                <div className="py-1">
+                  <button className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors duration-200">
+                    Profile Settings
+                  </button>
+                  <button className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors duration-200">
+                    Account Preferences
+                  </button>
+                </div>
+                <div className="py-1 border-t border-slate-200">
+                  <button 
+                    onClick={handleLogout}
+                    className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors duration-200"
+                  >
+                    Sign Out
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
