@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import Sidebar from './Sidebar';
 import Header from './Header';
@@ -9,8 +9,20 @@ import SettingsContent from './SettingsContent';
 
 const DashboardLayout = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const { logout } = useAuth();
+
+  // Close sidebar on window resize to desktop
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 1024) {
+        setSidebarOpen(false);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const handleTabChange = (tabId) => {
     setActiveTab(tabId);
@@ -22,6 +34,10 @@ const DashboardLayout = () => {
 
   const handleSidebarToggle = () => {
     setSidebarOpen(!sidebarOpen);
+  };
+
+  const handleSidebarClose = () => {
+    setSidebarOpen(false);
   };
 
   const renderContent = () => {
@@ -46,15 +62,17 @@ const DashboardLayout = () => {
         activeTab={activeTab} 
         onTabChange={handleTabChange} 
         onLogout={handleLogout}
+        isOpen={sidebarOpen}
+        onClose={handleSidebarClose}
       />
       
       {/* Main Content Area */}
-      <div className={`transition-all duration-300 ${sidebarOpen ? 'ml-64' : 'ml-0'}`}>
+      <div className="lg:ml-64 transition-all duration-300">
         {/* Header */}
         <Header onSidebarToggle={handleSidebarToggle} />
         
         {/* Page Content */}
-        <main className="pt-20">
+        <main className="pt-16 lg:pt-20 px-4 sm:px-6 lg:px-8">
           {renderContent()}
         </main>
       </div>
