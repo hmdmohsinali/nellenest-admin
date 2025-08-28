@@ -1,6 +1,6 @@
 // API Configuration for Nellenest Admin Panel
 export const API_CONFIG = {
-  BASE_URL: 'http://localhost:4000',
+  BASE_URL: 'https://nellenest.vercel.app',
   API_VERSION: 'v1',
   TIMEOUT: 30000,
   MAX_RETRIES: 3,
