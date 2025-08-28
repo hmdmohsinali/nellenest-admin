@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { authAPI } from '../services';
 
 const AuthContext = createContext();
 
@@ -15,87 +16,168 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   // Check if user is already logged in on app start
   useEffect(() => {
     checkAuthStatus();
   }, []);
 
-  const checkAuthStatus = () => {
+  const checkAuthStatus = async () => {
     try {
       const storedToken = localStorage.getItem('authToken');
       const storedUser = localStorage.getItem('userData');
 
-      if (storedToken && storedUser) {
-        // In a real app, you would validate the token with your backend
-        const userData = JSON.parse(storedUser);
+      console.log('=== AUTH CHECK START ===');
+      console.log('storedToken exists:', !!storedToken);
+      console.log('storedUser exists:', !!storedUser);
+      console.log('storedToken value:', storedToken ? storedToken.substring(0, 20) + '...' : 'null');
+
+      if (storedToken) {
+        // Set token first
+        setToken(storedToken);
+        console.log('Setting token and attempting to validate...');
         
-        // For demo purposes, we'll just check if the token exists
-        // In production, you should verify the token's validity
-        if (isValidToken(storedToken)) {
-          setToken(storedToken);
-          setUser(userData);
-          setIsAuthenticated(true);
-        } else {
-          // Token is invalid, clear everything
-          logout();
+        // Try to validate token and get user data
+        try {
+          console.log('Calling getCurrentUser API...');
+          const userData = await authAPI.getCurrentUser();
+          console.log('getCurrentUser response:', userData);
+          
+          if (userData && userData.success) {
+            console.log('Token validation successful, user authenticated');
+            setUser(userData.data);
+            setIsAuthenticated(true);
+            // Update stored user data
+            localStorage.setItem('userData', JSON.stringify(userData.data));
+          } else if (storedUser) {
+            // Fallback to stored user data if API call fails
+            console.log('API call failed, using stored user data as fallback');
+            const parsedUser = JSON.parse(storedUser);
+            setUser(parsedUser);
+            setIsAuthenticated(true);
+          } else {
+            // We have a token but no user data - still consider authenticated
+            console.log('Token exists but no user data, keeping authenticated');
+            setIsAuthenticated(true);
+          }
+        } catch (error) {
+          console.warn('Error validating token:', error);
+          console.log('Error details:', error.message);
+          
+          if (storedUser) {
+            // Fallback to stored user data
+            console.log('Using stored user data as fallback');
+            const parsedUser = JSON.parse(storedUser);
+            setUser(parsedUser);
+            setIsAuthenticated(true);
+          } else {
+            // If we have a token but no user data and validation fails,
+            // still consider authenticated (token might be valid but API issue)
+            console.log('Token validation failed but keeping user authenticated with stored token');
+            setIsAuthenticated(true);
+          }
         }
+      } else {
+        // No token found, ensure we're logged out
+        console.log('No stored token found, user not authenticated');
+        setIsAuthenticated(false);
+        setUser(null);
+        setToken(null);
       }
+      
+      console.log('=== AUTH CHECK END ===');
+      console.log('Final state - isAuthenticated:', isAuthenticated);
+      console.log('Final state - user:', !!user);
+      console.log('Final state - token:', !!token);
+      
     } catch (error) {
       console.error('Error checking auth status:', error);
-      logout();
+      // Don't automatically logout on error, just set as not authenticated
+      setIsAuthenticated(false);
+      setUser(null);
+      setToken(null);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Simple token validation (replace with real JWT validation)
-  const isValidToken = (token) => {
-    if (!token) return false;
-    
-    try {
-      // Basic JWT structure validation
-      const parts = token.split('.');
-      if (parts.length !== 3) return false;
-      
-      // In production, you should verify the token signature and expiration
-      // For now, we'll just check if it looks like a JWT
-      return true;
-    } catch (error) {
-      return false;
-    }
-  };
-
   const login = async (credentials) => {
     try {
-      // In a real app, this would be an API call
-      const { token: authToken, user: userData } = credentials;
+      setError(null);
+      setIsLoading(true);
       
-      // Store in localStorage
-      localStorage.setItem('authToken', authToken);
-      localStorage.setItem('userData', JSON.stringify(userData));
+      const response = await authAPI.login(credentials);
       
-      // Update state
-      setToken(authToken);
-      setUser(userData);
-      setIsAuthenticated(true);
-      
-      return { success: true };
+      // Handle the actual backend response format: { "token": "..." }
+      if (response && response.token) {
+        const token = response.token;
+        
+        // Store token in localStorage
+        localStorage.setItem('authToken', token);
+        
+        // Update token state
+        setToken(token);
+        
+        // Fetch user data using the token
+        try {
+          const userResponse = await authAPI.getCurrentUser();
+          if (userResponse && userResponse.success) {
+            const userData = userResponse.data;
+            
+            // Store user data in localStorage
+            localStorage.setItem('userData', JSON.stringify(userData));
+            
+            // Update user state
+            setUser(userData);
+            setIsAuthenticated(true);
+            
+            return { success: true };
+          } else {
+            // If we can't get user data, still consider login successful with just token
+            setIsAuthenticated(true);
+            return { success: true };
+          }
+        } catch (userError) {
+          console.warn('Could not fetch user data:', userError);
+          // Still consider login successful with just token
+          setIsAuthenticated(true);
+          return { success: true };
+        }
+      } else {
+        throw new Error(response?.message || 'Login failed - no token received');
+      }
     } catch (error) {
       console.error('Login error:', error);
+      setError(error.message);
       return { success: false, error: error.message };
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const logout = () => {
-    // Clear localStorage
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('userData');
-    
-    // Clear state
-    setToken(null);
-    setUser(null);
-    setIsAuthenticated(false);
+  const logout = async () => {
+    try {
+      // Call logout API if user is authenticated
+      if (token) {
+        await authAPI.logout();
+      }
+    } catch (error) {
+      console.error('Logout API error:', error);
+    } finally {
+      // Clear localStorage
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('userData');
+      
+      // Clear state
+      setToken(null);
+      setUser(null);
+      setIsAuthenticated(false);
+      setError(null);
+      
+      // Redirect to login page
+      window.location.href = '/login';
+    }
   };
 
   const updateUser = (updatedUserData) => {
@@ -105,14 +187,18 @@ export const AuthProvider = ({ children }) => {
 
   const refreshToken = async () => {
     try {
-      // In a real app, this would call your refresh token endpoint
-      const storedToken = localStorage.getItem('authToken');
-      if (storedToken && isValidToken(storedToken)) {
-        // For demo purposes, we'll just return the existing token
-        // In production, you'd make an API call to refresh the token
-        return storedToken;
+      const response = await authAPI.refreshToken();
+      
+      if (response && response.success) {
+        const { token: newToken } = response.data;
+        
+        // Update token in localStorage and state
+        localStorage.setItem('authToken', newToken);
+        setToken(newToken);
+        
+        return newToken;
       } else {
-        throw new Error('Invalid or expired token');
+        throw new Error('Token refresh failed');
       }
     } catch (error) {
       console.error('Token refresh failed:', error);
@@ -121,17 +207,8 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Check if token needs refresh (simple implementation)
-  const shouldRefreshToken = () => {
-    if (!token) return false;
-    
-    try {
-      // In production, decode JWT and check expiration
-      // For demo, we'll just return false
-      return false;
-    } catch (error) {
-      return true;
-    }
+  const clearError = () => {
+    setError(null);
   };
 
   const value = {
@@ -139,11 +216,12 @@ export const AuthProvider = ({ children }) => {
     token,
     isAuthenticated,
     isLoading,
+    error,
     login,
     logout,
     updateUser,
     refreshToken,
-    shouldRefreshToken,
+    clearError,
     checkAuthStatus
   };
 

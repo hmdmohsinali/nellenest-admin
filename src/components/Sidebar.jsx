@@ -12,7 +12,7 @@ const Sidebar = ({ activeTab, onTabChange, onLogout, isOpen, onClose }) => {
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: HomeIcon },
     { id: 'users', label: 'Users', icon: UsersIcon },
-    { id: 'analytics', label: 'Analytics', icon: ChartBarIcon },
+    { id: 'analytics', label: 'Courses', icon: ChartBarIcon },
     { id: 'settings', label: 'Settings', icon: Cog6ToothIcon },
   ];
 
@@ -60,13 +60,7 @@ const Sidebar = ({ activeTab, onTabChange, onLogout, isOpen, onClose }) => {
             return (
               <button
                 key={item.id}
-                onClick={() => {
-                  onTabChange(item.id);
-                  // Close sidebar on mobile after navigation
-                  if (window.innerWidth < 1024) {
-                    onClose();
-                  }
-                }}
+                onClick={() => onTabChange(item.id)}
                 className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 hover:bg-slate-700/50 ${
                   isActive 
                     ? 'bg-blue-600/20 text-blue-300 border-l-4 border-blue-400' 

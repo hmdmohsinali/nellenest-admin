@@ -1,10 +1,10 @@
 import React from 'react';
+import { Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import LoginPage from './LoginPage';
 import LoadingSpinner from './LoadingSpinner';
 
 const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated, isLoading, login } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
 
   // Show loading spinner while checking authentication
   if (isLoading) {
@@ -15,9 +15,9 @@ const ProtectedRoute = ({ children }) => {
     );
   }
 
-  // If not authenticated, show login page
+  // If not authenticated, redirect to login
   if (!isAuthenticated) {
-    return <LoginPage onLogin={login} />;
+    return <Navigate to="/login" replace />;
   }
 
   // If authenticated, render the protected content

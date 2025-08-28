@@ -1,81 +1,95 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import Sidebar from './Sidebar';
 import Header from './Header';
+import Sidebar from './Sidebar';
 import DashboardContent from './DashboardContent';
 import UsersContent from './UsersContent';
 import AnalyticsContent from './AnalyticsContent';
 import SettingsContent from './SettingsContent';
 
 const DashboardLayout = () => {
-  const [activeTab, setActiveTab] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { logout } = useAuth();
+  const { user, isAuthenticated, token, logout } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
 
-  // Close sidebar on window resize to desktop
-  useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth >= 1024) {
-        setSidebarOpen(false);
-      }
-    };
+  // Debug function to check localStorage
+  const debugAuth = () => {
+    console.log('=== DEBUG AUTH ===');
+    console.log('localStorage authToken:', localStorage.getItem('authToken'));
+    console.log('localStorage userData:', localStorage.getItem('userData'));
+    console.log('Context isAuthenticated:', isAuthenticated);
+    console.log('Context user:', user);
+    console.log('Context token:', token);
+    console.log('==================');
+  };
 
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+  // Call debug function on mount
+  React.useEffect(() => {
+    debugAuth();
   }, []);
-
-  const handleTabChange = (tabId) => {
-    setActiveTab(tabId);
-  };
-
-  const handleLogout = () => {
-    logout();
-  };
-
-  const handleSidebarToggle = () => {
-    setSidebarOpen(!sidebarOpen);
-  };
-
-  const handleSidebarClose = () => {
-    setSidebarOpen(false);
-  };
-
-  const renderContent = () => {
-    switch (activeTab) {
-      case 'dashboard':
-        return <DashboardContent />;
-      case 'users':
-        return <UsersContent />;
-      case 'analytics':
-        return <AnalyticsContent />;
-      case 'settings':
-        return <SettingsContent />;
-      default:
-        return <DashboardContent />;
-    }
-  };
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* Sidebar */}
+      {/* Debug Panel - Remove this in production */}
+      <div className="bg-yellow-100 p-2 text-xs border-b">
+        <button 
+          onClick={debugAuth}
+          className="bg-yellow-500 text-white px-2 py-1 rounded mr-2"
+        >
+          Debug Auth
+        </button>
+        <span className="mr-2">Auth: {isAuthenticated ? '✅' : '❌'}</span>
+        <span className="mr-2">Token: {token ? '✅' : '❌'}</span>
+        <span className="mr-2">User: {user ? '✅' : '❌'}</span>
+        <span>Path: {location.pathname}</span>
+      </div>
+
+      <Header onSidebarToggle={() => setSidebarOpen(true)} />
+      
       <Sidebar 
-        activeTab={activeTab} 
-        onTabChange={handleTabChange} 
-        onLogout={handleLogout}
-        isOpen={sidebarOpen}
-        onClose={handleSidebarClose}
+        isOpen={sidebarOpen} 
+        onClose={() => setSidebarOpen(false)}
+        onLogout={() => logout()}
+        activeTab={location.pathname.includes('/users') ? 'users' : 
+                   location.pathname.includes('/analytics') ? 'analytics' : 
+                   location.pathname.includes('/settings') ? 'settings' : 'dashboard'}
+        onTabChange={(tab) => {
+          // Navigate to the appropriate route
+          switch (tab) {
+            case 'dashboard':
+              navigate('/dashboard');
+              break;
+            case 'users':
+              navigate('/dashboard/users');
+              break;
+            case 'analytics':
+              navigate('/dashboard/analytics');
+              break;
+            case 'settings':
+              navigate('/dashboard/settings');
+              break;
+            default:
+              navigate('/dashboard');
+          }
+          // Close sidebar on mobile after navigation
+          if (window.innerWidth < 1024) {
+            setSidebarOpen(false);
+          }
+        }}
       />
       
-      {/* Main Content Area */}
-      <div className="lg:ml-64 transition-all duration-300">
-        {/* Header */}
-        <Header onSidebarToggle={handleSidebarToggle} />
-        
-        {/* Page Content */}
-        <main className="pt-16 lg:pt-20 px-4 sm:px-6 lg:px-8">
-          {renderContent()}
-        </main>
-      </div>
+      <main className="lg:pl-64">
+        <div className="px-4 sm:px-6 lg:px-8">
+          <Routes>
+            <Route path="/" element={<DashboardContent />} />
+            <Route path="/users" element={<UsersContent />} />
+            <Route path="/analytics" element={<AnalyticsContent />} />
+            <Route path="/settings" element={<SettingsContent />} />
+          </Routes>
+        </div>
+      </main>
     </div>
   );
 };

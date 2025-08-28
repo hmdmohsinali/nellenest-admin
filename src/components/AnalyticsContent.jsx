@@ -1,204 +1,407 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
-  CalendarIcon, 
-  ArrowTrendingUpIcon, 
-  ArrowTrendingDownIcon,
-  EyeIcon,
-  UserGroupIcon,
-  CurrencyDollarIcon,
-  ShoppingCartIcon
+  PlusIcon,
+  PencilIcon,
+  TrashIcon,
+  XMarkIcon,
+  MagnifyingGlassIcon
 } from '@heroicons/react/24/outline';
+import { adminAPI } from '../services/admin.service.js';
+import LoadingSpinner from './LoadingSpinner.jsx';
+
+const emptyCourse = {
+  name: '',
+  description: '',
+  category: '',
+  difficulty: 'beginner',
+  voiceVersions: [],
+  tags: []
+};
+
+const emptyVoiceVersion = {
+  gender: 'female',
+  audioUrl: '',
+  duration: 0,
+  description: ''
+};
 
 const AnalyticsContent = () => {
-  const [selectedPeriod, setSelectedPeriod] = useState('7d');
+  const [courses, setCourses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCourses, setTotalCourses] = useState(0);
+  const [searchTerm, setSearchTerm] = useState('');
 
-  // Mock analytics data - replace with real data later
-  const metrics = [
-    { 
-      name: 'Total Views', 
-      value: '89,400', 
-      change: '+12.5%', 
-      changeType: 'positive',
-      icon: EyeIcon,
-      color: 'blue'
-    },
-    { 
-      name: 'Unique Users', 
-      value: '23,500', 
-      change: '+8.2%', 
-      changeType: 'positive',
-      icon: UserGroupIcon,
-      color: 'green'
-    },
-    { 
-      name: 'Revenue', 
-      value: '$156,000', 
-      change: '+23.1%', 
-      changeType: 'positive',
-      icon: CurrencyDollarIcon,
-      color: 'purple'
-    },
-    { 
-      name: 'Conversions', 
-      value: '2,847', 
-      change: '-2.4%', 
-      changeType: 'negative',
-      icon: ShoppingCartIcon,
-      color: 'orange'
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingCourse, setEditingCourse] = useState(null);
+  const [formData, setFormData] = useState(emptyCourse);
+
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [courseToDelete, setCourseToDelete] = useState(null);
+
+  useEffect(() => {
+    fetchCourses();
+  }, [currentPage, searchTerm]);
+
+  const fetchCourses = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const params = {
+        page: currentPage,
+        limit: 10,
+        ...(searchTerm && { search: searchTerm })
+      };
+
+      const response = await adminAPI.courses.getAll(params);
+      if (response && Array.isArray(response.courses)) {
+        setCourses(response.courses);
+        setTotalPages(response.pagination?.totalPages || 1);
+        setTotalCourses(response.pagination?.total || response.courses.length || 0);
+      } else if (Array.isArray(response)) {
+        setCourses(response);
+        setTotalPages(1);
+        setTotalCourses(response.length);
+      } else {
+        setError('Invalid response format from server');
+      }
+    } catch (e) {
+      console.error('Error fetching courses:', e);
+      setError('Failed to load courses. Please try again.');
+    } finally {
+      setLoading(false);
     }
-  ];
-
-  const chartData = [
-    { date: 'Mon', views: 12000, users: 3200, revenue: 28000 },
-    { date: 'Tue', views: 15000, users: 3800, revenue: 32000 },
-    { date: 'Wed', views: 18000, users: 4200, revenue: 38000 },
-    { date: 'Thu', views: 22000, users: 4800, revenue: 45000 },
-    { date: 'Fri', views: 25000, users: 5200, revenue: 52000 },
-    { date: 'Sat', views: 28000, users: 5800, revenue: 58000 },
-    { date: 'Sun', views: 30000, users: 6200, revenue: 65000 }
-  ];
-
-  const getChangeColor = (type) => {
-    return type === 'positive' ? 'text-green-600' : 'text-red-600';
   };
 
-  const getChangeIcon = (type) => {
-    return type === 'positive' ? ArrowTrendingUpIcon : ArrowTrendingDownIcon;
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+    setCurrentPage(1);
   };
 
-  const getColorClasses = (color) => {
-    const colorMap = {
-      blue: 'bg-blue-500',
-      green: 'bg-green-500',
-      purple: 'bg-purple-500',
-      orange: 'bg-orange-500'
-    };
-    return colorMap[color] || 'bg-gray-500';
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
   };
+
+  const openCreateModal = () => {
+    setEditingCourse(null);
+    setFormData(emptyCourse);
+    setShowEditModal(true);
+  };
+
+  const openEditModal = (course) => {
+    setEditingCourse(course);
+    setFormData({
+      name: course.name || '',
+      description: course.description || '',
+      category: course.category || '',
+      difficulty: course.difficulty || 'beginner',
+      voiceVersions: Array.isArray(course.voiceVersions) ? course.voiceVersions : [],
+      tags: Array.isArray(course.tags) ? course.tags : []
+    });
+    setShowEditModal(true);
+  };
+
+  const closeEditModal = () => {
+    setShowEditModal(false);
+    setEditingCourse(null);
+    setFormData(emptyCourse);
+  };
+
+  const handleFieldChange = (field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleTagsChange = (value) => {
+    const tags = value.split(',').map(t => t.trim()).filter(Boolean);
+    setFormData(prev => ({ ...prev, tags }));
+  };
+
+  const addVoiceVersion = () => {
+    setFormData(prev => ({ ...prev, voiceVersions: [...prev.voiceVersions, { ...emptyVoiceVersion }] }));
+  };
+
+  const updateVoiceVersion = (index, field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      voiceVersions: prev.voiceVersions.map((v, i) => (i === index ? { ...v, [field]: value } : v))
+    }));
+  };
+
+  const removeVoiceVersion = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      voiceVersions: prev.voiceVersions.filter((_, i) => i !== index)
+    }));
+  };
+
+  const validateForm = () => {
+    if (!formData.name.trim()) return 'Name is required';
+    if (!formData.description.trim()) return 'Description is required';
+    if (!formData.category.trim()) return 'Category is required';
+    if (!['beginner', 'intermediate', 'advanced'].includes(formData.difficulty)) return 'Invalid difficulty';
+    for (const v of formData.voiceVersions) {
+      if (!v.gender || !['male', 'female'].includes(v.gender)) return 'Voice version gender must be male or female';
+      if (!v.audioUrl) return 'Voice version audioUrl is required';
+      if (Number.isNaN(Number(v.duration)) || Number(v.duration) <= 0) return 'Voice version duration must be > 0';
+    }
+    return null;
+  };
+
+  const handleSubmitCourse = async () => {
+    const validationError = validateForm();
+    if (validationError) { setError(validationError); return; }
+    try {
+      setLoading(true);
+      setError(null);
+      if (editingCourse && (editingCourse._id || editingCourse.id)) {
+        const id = editingCourse._id || editingCourse.id;
+        await adminAPI.courses.update(id, formData);
+      } else {
+        await adminAPI.courses.create(formData);
+      }
+      closeEditModal();
+      await fetchCourses();
+    } catch (e) {
+      console.error('Course save failed:', e);
+      setError(e.message || 'Failed to save course');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const openDeleteModal = (course) => { setCourseToDelete(course); setShowDeleteModal(true); };
+  const closeDeleteModal = () => { setCourseToDelete(null); setShowDeleteModal(false); };
+
+  const handleDeleteCourse = async () => {
+    if (!courseToDelete) return;
+    try {
+      setLoading(true);
+      setError(null);
+      const id = courseToDelete._id || courseToDelete.id;
+      await adminAPI.courses.delete(id);
+      closeDeleteModal();
+      await fetchCourses();
+    } catch (e) {
+      console.error('Delete failed:', e);
+      setError(e.message || 'Failed to delete course');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading && courses.length === 0) {
+    return (
+      <div className="py-6 lg:py-8">
+        <div className="mb-6 lg:mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-800 mb-2">Courses </h1>
+          <p className="text-sm sm:text-base text-slate-600">Manage your courses, content, and settings</p>
+        </div>
+        <div className="flex justify-center items-center h-64">
+          <LoadingSpinner />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="py-6 lg:py-8">
-      {/* Header */}
       <div className="mb-6 lg:mb-8">
-        <h1 className="text-2xl sm:text-3xl font-bold text-slate-800 mb-2">Analytics Dashboard</h1>
-        <p className="text-sm sm:text-base text-slate-600">Track your key performance metrics and user behavior</p>
+        <h1 className="text-2xl sm:text-3xl font-bold text-slate-800 mb-2">Courses</h1>
+        <p className="text-sm sm:text-base text-slate-600">Create, update, and manage meditation courses</p>
       </div>
 
-      {/* Period Selector */}
-      <div className="mb-6">
-        <div className="flex flex-wrap gap-2 bg-slate-100 p-1 rounded-lg w-fit">
-          {['1d', '7d', '30d', '90d'].map((period) => (
-            <button
-              key={period}
-              onClick={() => setSelectedPeriod(period)}
-              className={`px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-md transition-colors duration-200 ${
-                selectedPeriod === period
-                  ? 'bg-white text-slate-900 shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              {period === '1d' ? '24 Hours' : 
-               period === '7d' ? '7 Days' : 
-               period === '30d' ? '30 Days' : '90 Days'}
+      {error && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+          <div className="flex">
+            <div className="text-sm text-red-700">{error}</div>
+            <button onClick={() => setError(null)} className="ml-auto text-red-400 hover:text-red-600 cursor-pointer">×</button>
+          </div>
+        </div>
+      )}
+
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-3">
+        <div className="relative w-full sm:w-72">
+          <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+          <input type="text" placeholder="Search courses..." value={searchTerm} onChange={handleSearchChange} className="w-full pl-10 pr-4 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+        </div>
+        <button onClick={openCreateModal} className="inline-flex items-center space-x-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-blue-600 rounded-md hover:bg-blue-700 transition-colors duration-200 cursor-pointer">
+          <PlusIcon className="w-4 h-4" />
+          <span>New Course</span>
+        </button>
+      </div>
+
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-slate-50 border-b border-slate-200">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Name</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Category</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Difficulty</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Versions</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Tags</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-slate-200">
+              {courses.length === 0 ? (
+                <tr><td colSpan="6" className="px-6 py-8 text-center text-slate-500">No courses found</td></tr>
+              ) : (
+                courses.map((course) => (
+                  <tr key={course._id || course.id} className="hover:bg-slate-50 transition-colors duration-200">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="min-w-0">
+                        <div className="text-sm font-medium text-slate-900 truncate">{course.name}</div>
+                        <div className="text-xs text-slate-500 truncate">{course.description}</div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700">{course.category || '-'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap"><span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-slate-100 text-slate-800 capitalize">{course.difficulty || 'beginner'}</span></td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700">{Array.isArray(course.voiceVersions) ? course.voiceVersions.length : 0}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex flex-wrap gap-1">
+                        {Array.isArray(course.tags) && course.tags.length > 0 ? (
+                          course.tags.map((tag, i) => (<span key={i} className="inline-flex px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">{tag}</span>))
+                        ) : (<span className="text-xs text-slate-400">No tags</span>)}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <div className="flex space-x-2">
+                        <button className="text-green-600 hover:text-green-900 p-1.5 rounded hover:bg-green-50 transition-colors duration-200 cursor-pointer" title="Edit" onClick={() => openEditModal(course)}>
+                          <PencilIcon className="w-4 h-4" />
+                        </button>
+                        <button className="text-red-600 hover:text-red-900 p-1.5 rounded hover:bg-red-50 transition-colors duration-200 cursor-pointer" title="Delete" onClick={() => openDeleteModal(course)}>
+                          <TrashIcon className="w-4 h-4" />
             </button>
-          ))}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
 
-      {/* Metrics Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 lg:mb-8">
-        {metrics.map((metric, index) => {
-          const Icon = metric.icon;
-          const ChangeIcon = getChangeIcon(metric.changeType);
+      {totalPages > 1 && (
+        <div className="mt-6 flex flex-col sm:flex-row items-center justify-between space-y-4 sm:space-y-0">
+          <div className="text-sm text-slate-700">Showing <span className="font-medium">{((currentPage - 1) * 10) + 1}</span> to <span className="font-medium">{Math.min(currentPage * 10, totalCourses)}</span> of <span className="font-medium">{totalCourses}</span> results</div>
+          <div className="flex space-x-2">
+            <button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1} className="px-3 py-2 text-sm font-medium text-slate-500 bg-white border border-slate-300 rounded-md hover:bg-slate-50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">Previous</button>
+            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+              const pageNumber = Math.max(1, Math.min(totalPages - 4, currentPage - 2)) + i;
           return (
-            <div key={index} className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className={`p-2 sm:p-3 rounded-lg ${getColorClasses(metric.color)} bg-opacity-10`}>
-                  <Icon className={`w-5 h-5 sm:w-6 sm:h-6 ${getColorClasses(metric.color)}`} />
-                </div>
-                <div className="flex items-center space-x-1">
-                  <ChangeIcon className={`w-4 h-4 ${getChangeColor(metric.changeType)}`} />
-                  <span className={`text-xs sm:text-sm font-medium ${getChangeColor(metric.changeType)}`}>
-                    {metric.change}
-                  </span>
-                </div>
-              </div>
-              <h3 className="text-xs sm:text-sm font-medium text-slate-600 mb-1 truncate">{metric.name}</h3>
-              <p className="text-xl sm:text-2xl font-bold text-slate-800 truncate">{metric.value}</p>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Chart Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6 lg:mb-8">
-        {/* Views Chart */}
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6">
-          <h3 className="text-base sm:text-lg font-semibold text-slate-800 mb-4">Page Views</h3>
-          <div className="space-y-3">
-            {chartData.map((data, index) => (
-              <div key={index} className="flex items-center space-x-2 sm:space-x-3">
-                <span className="text-xs sm:text-sm text-slate-500 w-8 sm:w-12 flex-shrink-0">{data.date}</span>
-                <div className="flex-1 bg-slate-200 rounded-full h-2">
-                  <div 
-                    className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${(data.views / 30000) * 100}%` }}
-                  ></div>
-                </div>
-                <span className="text-xs sm:text-sm font-medium text-slate-700 w-12 sm:w-16 text-right flex-shrink-0">
-                  {data.views.toLocaleString()}
-                </span>
-              </div>
-            ))}
+                <button key={pageNumber} onClick={() => handlePageChange(pageNumber)} className={`px-3 py-2 text-sm font-medium rounded-md transition-colors duration-200 cursor-pointer ${pageNumber === currentPage ? 'text-white bg-blue-600 border border-blue-600' : 'text-slate-500 bg-white border border-slate-300 hover:bg-slate-50'}`}>{pageNumber}</button>
+              );
+            })}
+            <button onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages} className="px-3 py-2 text-sm font-medium text-slate-500 bg-white border border-slate-300 rounded-md hover:bg-slate-50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">Next</button>
           </div>
         </div>
+      )}
 
-        {/* Users Chart */}
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6">
-          <h3 className="text-base sm:text-lg font-semibold text-slate-800 mb-4">Unique Users</h3>
-          <div className="space-y-3">
-            {chartData.map((data, index) => (
-              <div key={index} className="flex items-center space-x-2 sm:space-x-3">
-                <span className="text-xs sm:text-sm text-slate-500 w-8 sm:w-12 flex-shrink-0">{data.date}</span>
-                <div className="flex-1 bg-slate-200 rounded-full h-2">
-                  <div 
-                    className="bg-green-500 h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${(data.users / 6200) * 100}%` }}
-                  ></div>
+      {showEditModal && (
+        <div className="fixed inset-0 backdrop-blur-sm bg-white/30 flex items-center justify-center z-50 p-4">
+          <div className="bg-white/95 backdrop-blur-md rounded-xl shadow-2xl border border-white/20 max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-6 border-b border-slate-200">
+              <h2 className="text-xl font-semibold text-slate-800">{editingCourse ? 'Edit Course' : 'New Course'}</h2>
+              <button onClick={closeEditModal} className="text-slate-400 hover:text-slate-600 transition-colors duration-200 cursor-pointer"><XMarkIcon className="w-6 h-6" /></button>
+            </div>
+            <div className="p-6 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Name</label>
+                  <input type="text" value={formData.name} onChange={(e) => handleFieldChange('name', e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
                 </div>
-                <span className="text-xs sm:text-sm font-medium text-slate-700 w-12 sm:w-16 text-right flex-shrink-0">
-                  {data.users.toLocaleString()}
-                </span>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Category</label>
+                  <input type="text" value={formData.category} onChange={(e) => handleFieldChange('category', e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Difficulty</label>
+                  <select value={formData.difficulty} onChange={(e) => handleFieldChange('difficulty', e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent capitalize">
+                    <option value="beginner">Beginner</option>
+                    <option value="intermediate">Intermediate</option>
+                    <option value="advanced">Advanced</option>
+                  </select>
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
+                  <textarea rows={3} value={formData.description} onChange={(e) => handleFieldChange('description', e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Tags (comma separated)</label>
+                  <input type="text" value={formData.tags.join(', ')} onChange={(e) => handleTagsChange(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="relaxation, beginner, mindful" />
+                </div>
               </div>
-            ))}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-medium text-slate-800">Voice Versions</h3>
+                  <button type="button" onClick={addVoiceVersion} className="text-sm text-blue-600 hover:text-blue-700 font-medium">+ Add Voice Version</button>
+                </div>
+                <div className="space-y-3">
+                  {formData.voiceVersions.length === 0 && (<div className="text-sm text-slate-500">No voice versions added.</div>)}
+                  {formData.voiceVersions.map((v, index) => (
+                    <div key={index} className="grid grid-cols-1 md:grid-cols-4 gap-3 bg-slate-50 p-3 rounded-lg">
+                      <div>
+                        <label className="block text-xs font-medium text-slate-600 mb-1">Gender</label>
+                        <select value={v.gender} onChange={(e) => updateVoiceVersion(index, 'gender', e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                          <option value="female">Female</option>
+                          <option value="male">Male</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-600 mb-1">Audio URL</label>
+                        <input type="url" value={v.audioUrl} onChange={(e) => updateVoiceVersion(index, 'audioUrl', e.target.value)} placeholder="https://..." className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-600 mb-1">Duration (sec)</label>
+                        <input type="number" min="1" value={v.duration} onChange={(e) => updateVoiceVersion(index, 'duration', Number(e.target.value))} className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                      </div>
+                      <div className="md:col-span-1 flex items-end justify-between">
+                        <div className="w-full">
+                          <label className="block text-xs font-medium text-slate-600 mb-1">Description</label>
+                          <input type="text" value={v.description} onChange={(e) => updateVoiceVersion(index, 'description', e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+              </div>
+                        <button type="button" onClick={() => removeVoiceVersion(index)} className="text-red-600 hover:text-red-700 p-2 ml-2" title="Remove"><TrashIcon className="w-4 h-4" /></button>
           </div>
         </div>
-      </div>
-
-      {/* Top Performing Content */}
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6">
-        <h3 className="text-base sm:text-lg font-semibold text-slate-800 mb-4">Top Performing Content</h3>
-        <div className="space-y-3 sm:space-y-4">
-          {[
-            { title: 'Homepage', views: 45000, engagement: '8.2%', trend: '+12%' },
-            { title: 'Product Catalog', views: 32000, engagement: '6.8%', trend: '+8%' },
-            { title: 'About Us', views: 28000, engagement: '5.4%', trend: '+15%' },
-            { title: 'Contact Page', views: 22000, engagement: '4.2%', trend: '+3%' },
-            { title: 'Blog Post #1', views: 18000, engagement: '7.1%', trend: '+22%' }
-          ].map((content, index) => (
-            <div key={index} className="flex items-center justify-between p-3 rounded-lg hover:bg-slate-50 transition-colors duration-200">
-              <div className="flex-1 min-w-0">
-                <h4 className="font-medium text-slate-800 text-sm sm:text-base truncate">{content.title}</h4>
-                <p className="text-xs sm:text-sm text-slate-500 truncate">Engagement: {content.engagement}</p>
-              </div>
-              <div className="text-right flex-shrink-0 ml-3">
-                <p className="font-medium text-slate-800 text-sm sm:text-base">{content.views.toLocaleString()} views</p>
-                <p className="text-xs sm:text-sm text-green-600">{content.trend}</p>
+                  ))}
+                </div>
               </div>
             </div>
-          ))}
+            <div className="flex items-center justify-end space-x-3 p-6 border-t border-slate-200">
+              <button onClick={closeEditModal} className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50 transition-colors duration-200 cursor-pointer" disabled={loading}>Cancel</button>
+              <button onClick={handleSubmitCourse} className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-blue-600 rounded-md hover:bg-blue-700 transition-colors duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed" disabled={loading}>{loading ? (editingCourse ? 'Updating...' : 'Creating...') : (editingCourse ? 'Update Course' : 'Create Course')}</button>
+            </div>
+          </div>
         </div>
+      )}
+
+      {showDeleteModal && courseToDelete && (
+        <div className="fixed inset-0 backdrop-blur-sm bg-white/30 flex items-center justify-center z-50 p-4">
+          <div className="bg-white/95 backdrop-blur-md rounded-xl shadow-2xl border border-white/20 max-w-md w-full">
+            <div className="flex items-center justify-between p-6 border-b border-slate-200">
+              <h2 className="text-xl font-semibold text-slate-800">Confirm Deletion</h2>
+              <button onClick={closeDeleteModal} className="text-slate-400 hover:text-slate-600 transition-colors duration-200 cursor-pointer"><XMarkIcon className="w-6 h-6" /></button>
       </div>
+            <div className="p-6">
+              <p className="text-slate-700 mb-2">Are you sure you want to delete this course?</p>
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <div className="font-medium text-slate-900">{courseToDelete.name}</div>
+                <div className="text-sm text-slate-600 truncate">{courseToDelete.description}</div>
+              </div>
+              <p className="text-sm text-slate-600 mt-4">This action cannot be undone.</p>
+              </div>
+            <div className="flex items-center justify-end space-x-3 p-6 border-t border-slate-200">
+              <button onClick={closeDeleteModal} className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50 transition-colors duration-200 cursor-pointer" disabled={loading}>Cancel</button>
+              <button onClick={handleDeleteCourse} className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-red-600 rounded-md hover:bg-red-700 transition-colors duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed" disabled={loading}>{loading ? 'Deleting...' : 'Delete Course'}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
