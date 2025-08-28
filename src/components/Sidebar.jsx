@@ -13,7 +13,7 @@ const Sidebar = ({ activeTab, onTabChange, onLogout, isOpen, onClose }) => {
     { id: 'dashboard', label: 'Dashboard', icon: HomeIcon },
     { id: 'users', label: 'Users', icon: UsersIcon },
     { id: 'analytics', label: 'Courses', icon: ChartBarIcon },
-    { id: 'settings', label: 'Settings', icon: Cog6ToothIcon },
+    { id: 'settings', label: 'Meditations', icon: Cog6ToothIcon },
   ];
 
   return (
@@ -32,6 +32,7 @@ const Sidebar = ({ activeTab, onTabChange, onLogout, isOpen, onClose }) => {
         ${isOpen ? 'translate-x-0' : '-translate-x-full'}
         lg:translate-x-0
         w-64 bg-gradient-to-b from-slate-800 to-slate-900 text-white shadow-xl
+        flex flex-col
       `}>
         {/* Mobile close button */}
         <div className="lg:hidden flex justify-end p-4">

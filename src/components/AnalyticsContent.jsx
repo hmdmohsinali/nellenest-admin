@@ -15,7 +15,9 @@ const emptyCourse = {
   category: '',
   difficulty: 'beginner',
   voiceVersions: [],
-  tags: []
+  tags: [],
+  isActive: true,
+  thumbnail: ''
 };
 
 const emptyVoiceVersion = {
@@ -37,9 +39,20 @@ const AnalyticsContent = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingCourse, setEditingCourse] = useState(null);
   const [formData, setFormData] = useState(emptyCourse);
+  const [formErrors, setFormErrors] = useState({});
+  const [modalError, setModalError] = useState(null);
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [courseToDelete, setCourseToDelete] = useState(null);
+
+  const formatDate = (iso) => {
+    if (!iso) return '-';
+    try {
+      return new Date(iso).toLocaleString();
+    } catch {
+      return '-';
+    }
+  };
 
   useEffect(() => {
     fetchCourses();
@@ -66,11 +79,11 @@ const AnalyticsContent = () => {
         setTotalPages(1);
         setTotalCourses(response.length);
       } else {
-        setError('Invalid response format from server');
+        setError('Something went wrong while loading courses. Please refresh and try again.');
       }
     } catch (e) {
       console.error('Error fetching courses:', e);
-      setError('Failed to load courses. Please try again.');
+      setError('We couldn’t load your courses right now. Please check your connection and try again.');
     } finally {
       setLoading(false);
     }
@@ -88,6 +101,8 @@ const AnalyticsContent = () => {
   const openCreateModal = () => {
     setEditingCourse(null);
     setFormData(emptyCourse);
+    setFormErrors({});
+    setModalError(null);
     setShowEditModal(true);
   };
 
@@ -99,8 +114,12 @@ const AnalyticsContent = () => {
       category: course.category || '',
       difficulty: course.difficulty || 'beginner',
       voiceVersions: Array.isArray(course.voiceVersions) ? course.voiceVersions : [],
-      tags: Array.isArray(course.tags) ? course.tags : []
+      tags: Array.isArray(course.tags) ? course.tags : [],
+      isActive: typeof course.isActive === 'boolean' ? course.isActive : true,
+      thumbnail: course.thumbnail || ''
     });
+    setFormErrors({});
+    setModalError(null);
     setShowEditModal(true);
   };
 
@@ -108,10 +127,13 @@ const AnalyticsContent = () => {
     setShowEditModal(false);
     setEditingCourse(null);
     setFormData(emptyCourse);
+    setFormErrors({});
+    setModalError(null);
   };
 
   const handleFieldChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+    setFormErrors(prev => ({ ...prev, [field]: undefined }));
   };
 
   const handleTagsChange = (value) => {
@@ -138,24 +160,29 @@ const AnalyticsContent = () => {
   };
 
   const validateForm = () => {
-    if (!formData.name.trim()) return 'Name is required';
-    if (!formData.description.trim()) return 'Description is required';
-    if (!formData.category.trim()) return 'Category is required';
-    if (!['beginner', 'intermediate', 'advanced'].includes(formData.difficulty)) return 'Invalid difficulty';
+    const errors = {};
+    if (!formData.name.trim()) errors.name = 'Please enter a course name.';
+    if (!formData.description.trim()) errors.description = 'Please add a brief description for this course.';
+    if (!formData.category.trim()) errors.category = 'Please specify a category (e.g., relaxation, focus).';
+    if (!['beginner', 'intermediate', 'advanced'].includes(formData.difficulty)) errors.difficulty = 'Please choose a valid difficulty level.';
     for (const v of formData.voiceVersions) {
-      if (!v.gender || !['male', 'female'].includes(v.gender)) return 'Voice version gender must be male or female';
-      if (!v.audioUrl) return 'Voice version audioUrl is required';
-      if (Number.isNaN(Number(v.duration)) || Number(v.duration) <= 0) return 'Voice version duration must be > 0';
+      if (!v.gender || !['male', 'female'].includes(v.gender)) { errors.voiceVersions = 'Each voice track should use “Male” or “Female” gender.'; break; }
+      if (!v.audioUrl) { errors.voiceVersions = 'Please provide an audio URL for each voice track.'; break; }
+      if (Number.isNaN(Number(v.duration)) || Number(v.duration) <= 0) { errors.voiceVersions = 'Please enter a duration greater than 0 seconds for each voice track.'; break; }
     }
-    return null;
+    return errors;
   };
 
   const handleSubmitCourse = async () => {
-    const validationError = validateForm();
-    if (validationError) { setError(validationError); return; }
+    const errors = validateForm();
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      setModalError('Some details are missing or look incorrect. Please review the highlighted fields.');
+      return;
+    }
     try {
       setLoading(true);
-      setError(null);
+      setModalError(null);
       if (editingCourse && (editingCourse._id || editingCourse.id)) {
         const id = editingCourse._id || editingCourse.id;
         await adminAPI.courses.update(id, formData);
@@ -166,7 +193,8 @@ const AnalyticsContent = () => {
       await fetchCourses();
     } catch (e) {
       console.error('Course save failed:', e);
-      setError(e.message || 'Failed to save course');
+      const message = e?.message || 'We couldn’t save your changes. Please try again.';
+      setModalError(message);
     } finally {
       setLoading(false);
     }
@@ -186,7 +214,7 @@ const AnalyticsContent = () => {
       await fetchCourses();
     } catch (e) {
       console.error('Delete failed:', e);
-      setError(e.message || 'Failed to delete course');
+      setError('We couldn’t delete this course right now. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -213,7 +241,7 @@ const AnalyticsContent = () => {
         <p className="text-sm sm:text-base text-slate-600">Create, update, and manage meditation courses</p>
       </div>
 
-      {error && (
+      {!showEditModal && error && (
         <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
           <div className="flex">
             <div className="text-sm text-red-700">{error}</div>
@@ -242,13 +270,14 @@ const AnalyticsContent = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Category</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Difficulty</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Versions</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Tags</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Active</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Created</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-slate-200">
               {courses.length === 0 ? (
-                <tr><td colSpan="6" className="px-6 py-8 text-center text-slate-500">No courses found</td></tr>
+                <tr><td colSpan="7" className="px-6 py-8 text-center text-slate-500">No courses found</td></tr>
               ) : (
                 courses.map((course) => (
                   <tr key={course._id || course.id} className="hover:bg-slate-50 transition-colors duration-200">
@@ -262,12 +291,11 @@ const AnalyticsContent = () => {
                     <td className="px-6 py-4 whitespace-nowrap"><span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-slate-100 text-slate-800 capitalize">{course.difficulty || 'beginner'}</span></td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700">{Array.isArray(course.voiceVersions) ? course.voiceVersions.length : 0}</td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex flex-wrap gap-1">
-                        {Array.isArray(course.tags) && course.tags.length > 0 ? (
-                          course.tags.map((tag, i) => (<span key={i} className="inline-flex px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">{tag}</span>))
-                        ) : (<span className="text-xs text-slate-400">No tags</span>)}
-                      </div>
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${course.isActive ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-700'}`}>
+                        {course.isActive ? 'Active' : 'Inactive'}
+                      </span>
                     </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-xs text-slate-600">{formatDate(course.createdAt)}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex space-x-2">
                         <button className="text-green-600 hover:text-green-900 p-1.5 rounded hover:bg-green-50 transition-colors duration-200 cursor-pointer" title="Edit" onClick={() => openEditModal(course)}>
@@ -275,7 +303,7 @@ const AnalyticsContent = () => {
                         </button>
                         <button className="text-red-600 hover:text-red-900 p-1.5 rounded hover:bg-red-50 transition-colors duration-200 cursor-pointer" title="Delete" onClick={() => openDeleteModal(course)}>
                           <TrashIcon className="w-4 h-4" />
-            </button>
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -293,7 +321,7 @@ const AnalyticsContent = () => {
             <button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1} className="px-3 py-2 text-sm font-medium text-slate-500 bg-white border border-slate-300 rounded-md hover:bg-slate-50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">Previous</button>
             {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
               const pageNumber = Math.max(1, Math.min(totalPages - 4, currentPage - 2)) + i;
-          return (
+              return (
                 <button key={pageNumber} onClick={() => handlePageChange(pageNumber)} className={`px-3 py-2 text-sm font-medium rounded-md transition-colors duration-200 cursor-pointer ${pageNumber === currentPage ? 'text-white bg-blue-600 border border-blue-600' : 'text-slate-500 bg-white border border-slate-300 hover:bg-slate-50'}`}>{pageNumber}</button>
               );
             })}
@@ -309,27 +337,49 @@ const AnalyticsContent = () => {
               <h2 className="text-xl font-semibold text-slate-800">{editingCourse ? 'Edit Course' : 'New Course'}</h2>
               <button onClick={closeEditModal} className="text-slate-400 hover:text-slate-600 transition-colors duration-200 cursor-pointer"><XMarkIcon className="w-6 h-6" /></button>
             </div>
+
+            {modalError && (
+              <div className="mx-6 mt-4 p-3 bg-red-50 border border-red-200 rounded">
+                <div className="flex">
+                  <span className="text-sm text-red-700">{modalError}</span>
+                  <button onClick={() => setModalError(null)} className="ml-auto text-red-400 hover:text-red-600">×</button>
+                </div>
+              </div>
+            )}
+
             <div className="p-6 space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Name</label>
-                  <input type="text" value={formData.name} onChange={(e) => handleFieldChange('name', e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                  <input type="text" value={formData.name} onChange={(e) => handleFieldChange('name', e.target.value)} className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent ${formErrors.name ? 'border-red-500' : 'border-slate-300'}`} />
+                  {formErrors.name && <p className="mt-1 text-xs text-red-600">{formErrors.name}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Category</label>
-                  <input type="text" value={formData.category} onChange={(e) => handleFieldChange('category', e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                  <input type="text" value={formData.category} onChange={(e) => handleFieldChange('category', e.target.value)} className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent ${formErrors.category ? 'border-red-500' : 'border-slate-300'}`} />
+                  {formErrors.category && <p className="mt-1 text-xs text-red-600">{formErrors.category}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Difficulty</label>
-                  <select value={formData.difficulty} onChange={(e) => handleFieldChange('difficulty', e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent capitalize">
+                  <select value={formData.difficulty} onChange={(e) => handleFieldChange('difficulty', e.target.value)} className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent capitalize ${formErrors.difficulty ? 'border-red-500' : 'border-slate-300'}`}>
                     <option value="beginner">Beginner</option>
                     <option value="intermediate">Intermediate</option>
                     <option value="advanced">Advanced</option>
                   </select>
+                  {formErrors.difficulty && <p className="mt-1 text-xs text-red-600">{formErrors.difficulty}</p>}
                 </div>
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
-                  <textarea rows={3} value={formData.description} onChange={(e) => handleFieldChange('description', e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                  <textarea rows={3} value={formData.description} onChange={(e) => handleFieldChange('description', e.target.value)} className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent ${formErrors.description ? 'border-red-500' : 'border-slate-300'}`} />
+                  {formErrors.description && <p className="mt-1 text-xs text-red-600">{formErrors.description}</p>}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Thumbnail URL (optional)</label>
+                  <input type="url" value={formData.thumbnail} onChange={(e) => handleFieldChange('thumbnail', e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="https://..." />
+                </div>
+                <div className="flex items-center space-x-2 mt-2">
+                  <input id="isActive" type="checkbox" checked={!!formData.isActive} onChange={(e) => handleFieldChange('isActive', e.target.checked)} className="rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
+                  <label htmlFor="isActive" className="text-sm text-slate-700">Active</label>
                 </div>
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-slate-700 mb-1">Tags (comma separated)</label>
@@ -341,6 +391,7 @@ const AnalyticsContent = () => {
                   <h3 className="text-sm font-medium text-slate-800">Voice Versions</h3>
                   <button type="button" onClick={addVoiceVersion} className="text-sm text-blue-600 hover:text-blue-700 font-medium">+ Add Voice Version</button>
                 </div>
+                {formErrors.voiceVersions && <div className="mb-3 text-xs text-red-600">{formErrors.voiceVersions}</div>}
                 <div className="space-y-3">
                   {formData.voiceVersions.length === 0 && (<div className="text-sm text-slate-500">No voice versions added.</div>)}
                   {formData.voiceVersions.map((v, index) => (
@@ -364,17 +415,17 @@ const AnalyticsContent = () => {
                         <div className="w-full">
                           <label className="block text-xs font-medium text-slate-600 mb-1">Description</label>
                           <input type="text" value={v.description} onChange={(e) => updateVoiceVersion(index, 'description', e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
-              </div>
+                        </div>
                         <button type="button" onClick={() => removeVoiceVersion(index)} className="text-red-600 hover:text-red-700 p-2 ml-2" title="Remove"><TrashIcon className="w-4 h-4" /></button>
-          </div>
-        </div>
+                      </div>
+                    </div>
                   ))}
                 </div>
               </div>
             </div>
             <div className="flex items-center justify-end space-x-3 p-6 border-t border-slate-200">
               <button onClick={closeEditModal} className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50 transition-colors duration-200 cursor-pointer" disabled={loading}>Cancel</button>
-              <button onClick={handleSubmitCourse} className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-blue-600 rounded-md hover:bg-blue-700 transition-colors duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed" disabled={loading}>{loading ? (editingCourse ? 'Updating...' : 'Creating...') : (editingCourse ? 'Update Course' : 'Create Course')}</button>
+              <button onClick={handleSubmitCourse} className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-blue-600 rounded-md hover:bg-blue-700 transition-colors duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed" disabled={loading}>{loading ? (editingCourse ? 'Updating…' : 'Creating…') : (editingCourse ? 'Update Course' : 'Create Course')}</button>
             </div>
           </div>
         </div>
@@ -386,7 +437,7 @@ const AnalyticsContent = () => {
             <div className="flex items-center justify-between p-6 border-b border-slate-200">
               <h2 className="text-xl font-semibold text-slate-800">Confirm Deletion</h2>
               <button onClick={closeDeleteModal} className="text-slate-400 hover:text-slate-600 transition-colors duration-200 cursor-pointer"><XMarkIcon className="w-6 h-6" /></button>
-      </div>
+            </div>
             <div className="p-6">
               <p className="text-slate-700 mb-2">Are you sure you want to delete this course?</p>
               <div className="bg-red-50 border border-red-200 rounded-lg p-4">
@@ -394,10 +445,10 @@ const AnalyticsContent = () => {
                 <div className="text-sm text-slate-600 truncate">{courseToDelete.description}</div>
               </div>
               <p className="text-sm text-slate-600 mt-4">This action cannot be undone.</p>
-              </div>
+            </div>
             <div className="flex items-center justify-end space-x-3 p-6 border-t border-slate-200">
               <button onClick={closeDeleteModal} className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50 transition-colors duration-200 cursor-pointer" disabled={loading}>Cancel</button>
-              <button onClick={handleDeleteCourse} className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-red-600 rounded-md hover:bg-red-700 transition-colors duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed" disabled={loading}>{loading ? 'Deleting...' : 'Delete Course'}</button>
+              <button onClick={handleDeleteCourse} className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-red-600 rounded-md hover:bg-red-700 transition-colors duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed" disabled={loading}>{loading ? 'Deleting…' : 'Delete Course'}</button>
             </div>
           </div>
         </div>
