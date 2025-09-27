@@ -8,6 +8,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { adminAPI } from '../services/admin.service.js';
 import LoadingSpinner from './LoadingSpinner.jsx';
+import FileUpload from './FileUpload.jsx';
 
 const emptyCourse = {
   name: '',
@@ -41,6 +42,7 @@ const AnalyticsContent = () => {
   const [formData, setFormData] = useState(emptyCourse);
   const [formErrors, setFormErrors] = useState({});
   const [modalError, setModalError] = useState(null);
+  const [uploadErrors, setUploadErrors] = useState({});
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [courseToDelete, setCourseToDelete] = useState(null);
@@ -128,6 +130,7 @@ const AnalyticsContent = () => {
     setEditingCourse(null);
     setFormData(emptyCourse);
     setFormErrors({});
+    setUploadErrors({});
     setModalError(null);
   };
 
@@ -145,10 +148,10 @@ const AnalyticsContent = () => {
     setFormData(prev => ({ ...prev, voiceVersions: [...prev.voiceVersions, { ...emptyVoiceVersion }] }));
   };
 
-  const updateVoiceVersion = (index, field, value) => {
+  const updateVoiceVersion = (index, field, value, fileData = null) => {
     setFormData(prev => ({
       ...prev,
-      voiceVersions: prev.voiceVersions.map((v, i) => (i === index ? { ...v, [field]: value } : v))
+      voiceVersions: prev.voiceVersions.map((v, i) => (i === index ? { ...v, [field]: value, ...(fileData && { fileData }) } : v))
     }));
   };
 
@@ -167,7 +170,7 @@ const AnalyticsContent = () => {
     if (!['beginner', 'intermediate', 'advanced'].includes(formData.difficulty)) errors.difficulty = 'Please choose a valid difficulty level.';
     for (const v of formData.voiceVersions) {
       if (!v.gender || !['male', 'female'].includes(v.gender)) { errors.voiceVersions = 'Each voice track should use “Male” or “Female” gender.'; break; }
-      if (!v.audioUrl) { errors.voiceVersions = 'Please provide an audio URL for each voice track.'; break; }
+      if (!v.audioUrl) { errors.voiceVersions = 'Please upload an audio file for each voice track.'; break; }
       if (Number.isNaN(Number(v.duration)) || Number(v.duration) <= 0) { errors.voiceVersions = 'Please enter a duration greater than 0 seconds for each voice track.'; break; }
     }
     return errors;
@@ -374,8 +377,16 @@ const AnalyticsContent = () => {
                   {formErrors.description && <p className="mt-1 text-xs text-red-600">{formErrors.description}</p>}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Thumbnail URL (optional)</label>
-                  <input type="url" value={formData.thumbnail} onChange={(e) => handleFieldChange('thumbnail', e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="https://..." />
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Thumbnail (optional)</label>
+                  <FileUpload
+                    type="image"
+                    value={formData.thumbnail}
+                    onChange={(url, fileData) => handleFieldChange('thumbnail', url)}
+                    onError={(error) => setUploadErrors(prev => ({ ...prev, thumbnail: error }))}
+                    placeholder="Upload course thumbnail"
+                    folder="nellenest/courses/thumbnails"
+                  />
+                  {uploadErrors.thumbnail && <p className="mt-1 text-xs text-red-600">{uploadErrors.thumbnail}</p>}
                 </div>
                 <div className="flex items-center space-x-2 mt-2">
                   <input id="isActive" type="checkbox" checked={!!formData.isActive} onChange={(e) => handleFieldChange('isActive', e.target.checked)} className="rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
@@ -404,8 +415,17 @@ const AnalyticsContent = () => {
                         </select>
                       </div>
                       <div>
-                        <label className="block text-xs font-medium text-slate-600 mb-1">Audio URL</label>
-                        <input type="url" value={v.audioUrl} onChange={(e) => updateVoiceVersion(index, 'audioUrl', e.target.value)} placeholder="https://..." className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                        <label className="block text-xs font-medium text-slate-600 mb-1">Audio File</label>
+                        <FileUpload
+                          type="audio"
+                          value={v.audioUrl}
+                          onChange={(url, fileData) => updateVoiceVersion(index, 'audioUrl', url, fileData)}
+                          onError={(error) => setUploadErrors(prev => ({ ...prev, [`audio_${index}`]: error }))}
+                          placeholder="Upload audio file"
+                          folder="nellenest/courses/audio"
+                          className="text-xs"
+                        />
+                        {uploadErrors[`audio_${index}`] && <p className="mt-1 text-xs text-red-600">{uploadErrors[`audio_${index}`]}</p>}
                       </div>
                       <div>
                         <label className="block text-xs font-medium text-slate-600 mb-1">Duration (sec)</label>

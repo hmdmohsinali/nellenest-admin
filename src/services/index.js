@@ -5,3 +5,4 @@ export { default as adminAPI } from './admin.service.js';
 export { default as userAPI } from './user.service.js';
 export { default as analyticsAPI } from './analytics.service.js';
 export { default as notificationsAPI } from './notifications.service.js';
+export { default as cloudinaryAPI } from './cloudinary.service.js';
