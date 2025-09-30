@@ -1,16 +1,16 @@
 import { useState, useRef } from 'react';
-import { CloudArrowUpIcon, TrashIcon, DocumentIcon, MusicalNoteIcon } from '@heroicons/react/24/outline';
+import { CloudArrowUpIcon, TrashIcon, DocumentIcon } from '@heroicons/react/24/outline';
 import { cloudinaryAPI } from '../services/cloudinary.service.js';
 
 const FileUpload = ({ 
-  type = 'image', // 'image' or 'audio'
+  type = 'image', // 'image' or 'video'
   value = null, // current file URL or file object
   onChange, // callback function (url, fileData)
   onError, // callback for errors
   className = '',
   placeholder = '',
   accept = '',
-  maxSize = 10 * 1024 * 1024, // 10MB default
+  maxSize = 50 * 1024 * 1024, // 10MB default
   folder = ''
 }) => {
   const [isUploading, setIsUploading] = useState(false);
@@ -18,17 +18,10 @@ const FileUpload = ({
   const fileInputRef = useRef(null);
 
   const handleFileSelect = async (file) => {
-    // Validate file size
-    if (file.size > maxSize) {
-      const maxSizeMB = Math.round(maxSize / (1024 * 1024));
-      onError?.(`File size must be less than ${maxSizeMB}MB`);
-      return;
-    }
-
     // Validate file type
     const isValidType = type === 'image' 
       ? file.type.startsWith('image/')
-      : file.type.startsWith('audio/') || file.type.startsWith('video/');
+      : file.type.startsWith('video/');
     
     if (!isValidType) {
       onError?.(`Please select a valid ${type} file`);
@@ -95,21 +88,21 @@ const FileUpload = ({
     if (accept) return accept;
     return type === 'image' 
       ? 'image/jpeg,image/jpg,image/png,image/webp,image/gif'
-      : 'audio/mpeg,audio/wav,audio/mp3,audio/ogg,audio/aac,audio/m4a';
+      : 'video/mp4,video/mpeg,video/ogg,video/webm,video/quicktime,video/x-msvideo,video/x-matroska';
   };
 
   const getIcon = () => {
     if (type === 'image') {
       return <DocumentIcon className="w-8 h-8 text-slate-400" />;
     }
-    return <MusicalNoteIcon className="w-8 h-8 text-slate-400" />;
+    return <DocumentIcon className="w-8 h-8 text-slate-400" />;
   };
 
   const getPlaceholder = () => {
     if (placeholder) return placeholder;
     return type === 'image' 
       ? 'Click to upload or drag and drop an image'
-      : 'Click to upload or drag and drop an audio file';
+      : 'Click to upload or drag and drop a video file';
   };
 
   return (
@@ -131,7 +124,7 @@ const FileUpload = ({
               {getIcon()}
               <div>
                 <p className="text-sm font-medium text-slate-700">
-                  {type === 'image' ? 'Image uploaded' : 'Audio uploaded'}
+                  {type === 'image' ? 'Image uploaded' : 'Video uploaded'}
                 </p>
                 <p className="text-xs text-slate-500 truncate max-w-xs">
                   {typeof value === 'string' ? value.split('/').pop() : value.name || 'File'}
@@ -179,8 +172,8 @@ const FileUpload = ({
           </p>
           <p className="text-xs text-slate-500">
             {type === 'image' 
-              ? 'PNG, JPG, GIF, WebP up to 10MB'
-              : 'MP3, WAV, OGG, AAC, M4A up to 10MB'
+              ? 'PNG, JPG, GIF, WebP'
+              : 'MP4, MPEG, OGG, WebM, MOV, AVI, MKV'
             }
           </p>
           {isUploading && (

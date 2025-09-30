@@ -37,6 +37,13 @@ export const API_CONFIG = {
         UPDATE: (id) => `/admin/courses/${id}`,
         DELETE: (id) => `/admin/courses/${id}`,
       },
+      SLEEP_SONGS: {
+        LIST: '/admin/sleep-songs',
+        DETAIL: (id) => `/admin/sleep-songs/${id}`,
+        CREATE: '/admin/sleep-songs',
+        UPDATE: (id) => `/admin/sleep-songs/${id}`,
+        DELETE: (id) => `/admin/sleep-songs/${id}`,
+      },
     },
     USER: {
       PROFILE: '/users/profile',

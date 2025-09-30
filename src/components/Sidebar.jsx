@@ -13,7 +13,8 @@ const Sidebar = ({ activeTab, onTabChange, onLogout, isOpen, onClose }) => {
     { id: 'dashboard', label: 'Dashboard', icon: HomeIcon },
     { id: 'users', label: 'Users', icon: UsersIcon },
     { id: 'analytics', label: 'Courses', icon: ChartBarIcon },
-    { id: 'settings', label: 'Meditations', icon: Cog6ToothIcon },
+    { id: 'sleep-songs', label: 'Sleep Songs', icon: ChartBarIcon },
+    { id: 'musics', label: 'Musics', icon: ChartBarIcon },
   ];
 
   return (

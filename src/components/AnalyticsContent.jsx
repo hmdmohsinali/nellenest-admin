@@ -170,7 +170,7 @@ const AnalyticsContent = () => {
     if (!['beginner', 'intermediate', 'advanced'].includes(formData.difficulty)) errors.difficulty = 'Please choose a valid difficulty level.';
     for (const v of formData.voiceVersions) {
       if (!v.gender || !['male', 'female'].includes(v.gender)) { errors.voiceVersions = 'Each voice track should use “Male” or “Female” gender.'; break; }
-      if (!v.audioUrl) { errors.voiceVersions = 'Please upload an audio file for each voice track.'; break; }
+      if (!v.audioUrl) { errors.voiceVersions = 'Please upload a file for each voice track.'; break; }
       if (Number.isNaN(Number(v.duration)) || Number(v.duration) <= 0) { errors.voiceVersions = 'Please enter a duration greater than 0 seconds for each voice track.'; break; }
     }
     return errors;
@@ -415,13 +415,13 @@ const AnalyticsContent = () => {
                         </select>
                       </div>
                       <div>
-                        <label className="block text-xs font-medium text-slate-600 mb-1">Audio File</label>
+                        <label className="block text-xs font-medium text-slate-600 mb-1">File</label>
                         <FileUpload
                           type="audio"
                           value={v.audioUrl}
                           onChange={(url, fileData) => updateVoiceVersion(index, 'audioUrl', url, fileData)}
                           onError={(error) => setUploadErrors(prev => ({ ...prev, [`audio_${index}`]: error }))}
-                          placeholder="Upload audio file"
+                          placeholder="Upload file"
                           folder="nellenest/courses/audio"
                           className="text-xs"
                         />

@@ -7,6 +7,8 @@ import DashboardContent from './DashboardContent';
 import UsersContent from './UsersContent';
 import AnalyticsContent from './AnalyticsContent';
 import SettingsContent from './SettingsContent';
+import SleepSongsContent from './SleepSongsContent';
+import MusicsContent from './MusicsContent';
 
 const DashboardLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -54,7 +56,9 @@ const DashboardLayout = () => {
         onLogout={() => logout()}
         activeTab={location.pathname.includes('/users') ? 'users' : 
                    location.pathname.includes('/analytics') ? 'analytics' : 
-                   location.pathname.includes('/settings') ? 'settings' : 'dashboard'}
+                   location.pathname.includes('/settings') ? 'settings' :
+                   location.pathname.includes('/sleep-songs') ? 'sleep-songs' :
+                   location.pathname.includes('/musics') ? 'musics' : 'dashboard'}
         onTabChange={(tab) => {
           // Navigate to the appropriate route
           switch (tab) {
@@ -69,6 +73,12 @@ const DashboardLayout = () => {
               break;
             case 'settings':
               navigate('/dashboard/settings');
+              break;
+            case 'sleep-songs':
+              navigate('/dashboard/sleep-songs');
+              break;
+            case 'musics':
+              navigate('/dashboard/musics');
               break;
             default:
               navigate('/dashboard');
@@ -87,6 +97,8 @@ const DashboardLayout = () => {
             <Route path="/users" element={<UsersContent />} />
             <Route path="/analytics" element={<AnalyticsContent />} />
             <Route path="/settings" element={<SettingsContent />} />
+            <Route path="/sleep-songs" element={<SleepSongsContent />} />
+            <Route path="/musics" element={<MusicsContent />} />
           </Routes>
         </div>
       </main>
