@@ -100,6 +100,34 @@ export const adminAPI = {
     delete: async (id) => {
       return apiService.delete(API_CONFIG.ENDPOINTS.ADMIN.SLEEP_SONGS.DELETE(id));
     }
+  },
+
+  // Music Management
+  music: {
+    // Get all music (admin, with pagination/filter)
+    getAll: async (params = {}) => {
+      return apiService.get(API_CONFIG.ENDPOINTS.ADMIN.MUSIC.LIST, params);
+    },
+
+    // Get specific music by ID
+    getById: async (id) => {
+      return apiService.get(API_CONFIG.ENDPOINTS.ADMIN.MUSIC.DETAIL(id));
+    },
+
+    // Create new music
+    create: async (data) => {
+      return apiService.post(API_CONFIG.ENDPOINTS.ADMIN.MUSIC.CREATE, data);
+    },
+
+    // Update music
+    update: async (id, data) => {
+      return apiService.put(API_CONFIG.ENDPOINTS.ADMIN.MUSIC.UPDATE(id), data);
+    },
+
+    // Delete music
+    delete: async (id) => {
+      return apiService.delete(API_CONFIG.ENDPOINTS.ADMIN.MUSIC.DELETE(id));
+    }
   }
 };
 
