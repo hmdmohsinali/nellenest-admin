@@ -13,7 +13,7 @@ import FileUpload from './FileUpload.jsx';
 const emptyCourse = {
   name: '',
   description: '',
-  category: '',
+  theme: '',
   difficulty: 'beginner',
   voiceVersions: [],
   tags: [],
@@ -36,6 +36,8 @@ const AnalyticsContent = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [totalCourses, setTotalCourses] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
+  const [theme, setTheme] = useState('');
+  const [difficulty, setDifficulty] = useState('');
 
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingCourse, setEditingCourse] = useState(null);
@@ -58,7 +60,7 @@ const AnalyticsContent = () => {
 
   useEffect(() => {
     fetchCourses();
-  }, [currentPage, searchTerm]);
+  }, [currentPage, searchTerm, theme, difficulty]);
 
   const fetchCourses = async () => {
     try {
@@ -70,6 +72,8 @@ const AnalyticsContent = () => {
         limit: 10,
         ...(searchTerm && { search: searchTerm })
       };
+      if (theme) params.theme = theme;
+      if (difficulty) params.difficulty = difficulty;
 
       const response = await adminAPI.courses.getAll(params);
       if (response && Array.isArray(response.courses)) {
@@ -113,7 +117,7 @@ const AnalyticsContent = () => {
     setFormData({
       name: course.name || '',
       description: course.description || '',
-      category: course.category || '',
+      theme: course.theme || '',
       difficulty: course.difficulty || 'beginner',
       voiceVersions: Array.isArray(course.voiceVersions) ? course.voiceVersions : [],
       tags: Array.isArray(course.tags) ? course.tags : [],
@@ -166,7 +170,7 @@ const AnalyticsContent = () => {
     const errors = {};
     if (!formData.name.trim()) errors.name = 'Please enter a course name.';
     if (!formData.description.trim()) errors.description = 'Please add a brief description for this course.';
-    if (!formData.category.trim()) errors.category = 'Please specify a category (e.g., relaxation, focus).';
+    if (!formData.theme.trim()) errors.theme = 'Please select a theme.';
     if (!['beginner', 'intermediate', 'advanced'].includes(formData.difficulty)) errors.difficulty = 'Please choose a valid difficulty level.';
     for (const v of formData.voiceVersions) {
       if (!v.gender || !['male', 'female'].includes(v.gender)) { errors.voiceVersions = 'Each voice track should use “Male” or “Female” gender.'; break; }
@@ -258,6 +262,27 @@ const AnalyticsContent = () => {
           <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
           <input type="text" placeholder="Search courses..." value={searchTerm} onChange={handleSearchChange} className="w-full pl-10 pr-4 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
         </div>
+        <div className="w-full sm:w-40">
+          <select value={theme} onChange={(e) => { setTheme(e.target.value); setCurrentPage(1); }} className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+            <option value="">All Themes</option>
+            <option value="self-worth">Self Worth</option>
+            <option value="love">Love</option>
+            <option value="growth">Growth</option>
+            <option value="health">Health</option>
+            <option value="gratitude">Gratitude</option>
+            <option value="calm">Calm</option>
+            <option value="joy">Joy</option>
+            <option value="purpose">Purpose</option>
+          </select>
+        </div>
+        <div className="w-full sm:w-40">
+          <select value={difficulty} onChange={(e) => { setDifficulty(e.target.value); setCurrentPage(1); }} className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent capitalize">
+            <option value="">All Difficulties</option>
+            <option value="beginner">Beginner</option>
+            <option value="intermediate">Intermediate</option>
+            <option value="advanced">Advanced</option>
+          </select>
+        </div>
         <button onClick={openCreateModal} className="inline-flex items-center space-x-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-blue-600 rounded-md hover:bg-blue-700 transition-colors duration-200 cursor-pointer">
           <PlusIcon className="w-4 h-4" />
           <span>New Course</span>
@@ -270,8 +295,8 @@ const AnalyticsContent = () => {
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Name</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Category</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Difficulty</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Theme</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Versions</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Active</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Created</th>
@@ -290,8 +315,14 @@ const AnalyticsContent = () => {
                         <div className="text-xs text-slate-500 truncate">{course.description}</div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700">{course.category || '-'}</td>
                     <td className="px-6 py-4 whitespace-nowrap"><span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-slate-100 text-slate-800 capitalize">{course.difficulty || 'beginner'}</span></td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      {course.theme ? (
+                        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-slate-100 text-slate-700 capitalize">{String(course.theme).replace('-', ' ')}</span>
+                      ) : (
+                        <span className="text-slate-400">-</span>
+                      )}
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700">{Array.isArray(course.voiceVersions) ? course.voiceVersions.length : 0}</td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${course.isActive ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-700'}`}>
@@ -358,9 +389,19 @@ const AnalyticsContent = () => {
                   {formErrors.name && <p className="mt-1 text-xs text-red-600">{formErrors.name}</p>}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Category</label>
-                  <input type="text" value={formData.category} onChange={(e) => handleFieldChange('category', e.target.value)} className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent ${formErrors.category ? 'border-red-500' : 'border-slate-300'}`} />
-                  {formErrors.category && <p className="mt-1 text-xs text-red-600">{formErrors.category}</p>}
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Theme</label>
+                  <select value={formData.theme} onChange={(e) => handleFieldChange('theme', e.target.value)} className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent ${formErrors.theme ? 'border-red-500' : 'border-slate-300'}`}>
+                    <option value="">Select theme</option>
+                    <option value="self-worth">Self Worth</option>
+                    <option value="love">Love</option>
+                    <option value="growth">Growth</option>
+                    <option value="health">Health</option>
+                    <option value="gratitude">Gratitude</option>
+                    <option value="calm">Calm</option>
+                    <option value="joy">Joy</option>
+                    <option value="purpose">Purpose</option>
+                  </select>
+                  {formErrors.theme && <p className="mt-1 text-xs text-red-600">{formErrors.theme}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Difficulty</label>
