@@ -1,6 +1,6 @@
 // API Configuration for Nellenest Admin Panel
 export const API_CONFIG = {
-  BASE_URL: 'https://nellenest.vercel.app',
+  BASE_URL: 'https://nellenestbe.vercel.app',
   API_VERSION: 'v1',
   TIMEOUT: 30000,
   MAX_RETRIES: 3,
@@ -30,12 +30,12 @@ export const API_CONFIG = {
         BULK_UPDATE: '/admin/users/bulk/update',
         BULK_DELETE: '/admin/users/bulk/delete',
       },
-      COURSES: {
-        LIST: '/admin/courses',
-        DETAIL: (id) => `/admin/courses/${id}`,
-        CREATE: '/admin/courses',
-        UPDATE: (id) => `/admin/courses/${id}`,
-        DELETE: (id) => `/admin/courses/${id}`,
+      THEMES: {
+        LIST: '/admin/themes',
+        DETAIL: (id) => `/admin/themes/${id}`,
+        CREATE: '/admin/themes',
+        UPDATE: (id) => `/admin/themes/${id}`,
+        DELETE: (id) => `/admin/themes/${id}`,
       },
       SLEEP_SONGS: {
         LIST: '/admin/sleep-songs',
@@ -60,7 +60,7 @@ export const API_CONFIG = {
     },
     ANALYTICS: {
       USER_STATS: '/analytics/users',
-      COURSE_STATS: '/analytics/courses',
+      THEME_STATS: '/analytics/themes',
       PERFORMANCE: '/analytics/performance',
     },
     NOTIFICATIONS: {

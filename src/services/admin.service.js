@@ -46,31 +46,31 @@ export const adminAPI = {
     }
   },
 
-  // Course Management
-  courses: {
-    // Get all courses
+  // theme Management
+  themes: {
+    // Get all themes
     getAll: async (params = {}) => {
-      return apiService.get(API_CONFIG.ENDPOINTS.ADMIN.COURSES.LIST, params);
+      return apiService.get(API_CONFIG.ENDPOINTS.ADMIN.THEMES.LIST, params);
     },
 
-    // Get specific course by ID
+    // Get specific theme by ID
     getById: async (id) => {
-      return apiService.get(API_CONFIG.ENDPOINTS.ADMIN.COURSES.DETAIL(id));
+      return apiService.get(API_CONFIG.ENDPOINTS.ADMIN.THEMES.DETAIL(id));
     },
 
-    // Create new course
-    create: async (courseData) => {
-      return apiService.post(API_CONFIG.ENDPOINTS.ADMIN.COURSES.CREATE, courseData);
+    // Create new theme
+    create: async (themeData) => {
+      return apiService.post(API_CONFIG.ENDPOINTS.ADMIN.THEMES.CREATE, themeData);
     },
 
-    // Update course
-    update: async (id, courseData) => {
-      return apiService.put(API_CONFIG.ENDPOINTS.ADMIN.COURSES.UPDATE(id), courseData);
+    // Update theme
+    update: async (id, themeData) => {
+      return apiService.put(API_CONFIG.ENDPOINTS.ADMIN.THEMES.UPDATE(id), themeData);
     },
 
-    // Delete course
+    // Delete theme
     delete: async (id) => {
-      return apiService.delete(API_CONFIG.ENDPOINTS.ADMIN.COURSES.DELETE(id));
+      return apiService.delete(API_CONFIG.ENDPOINTS.ADMIN.THEMES.DELETE(id));
     }
   }
   ,
